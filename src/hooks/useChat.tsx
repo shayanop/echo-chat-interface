@@ -6,7 +6,8 @@ import {
   saveChatSession, 
   addMessageToSession, 
   deleteChatSession,
-  getChatSessionById
+  getChatSessionById,
+  getUserId
 } from "@/lib/storage";
 import { sendChatRequest } from "@/services/api";
 import { getDefaultModel } from "@/lib/models";
@@ -15,26 +16,34 @@ export const useChat = () => {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Initialize chat sessions from storage
   useEffect(() => {
-    const savedSessions = getChatSessions();
-    setChatSessions(savedSessions);
+    const initializeChats = async () => {
+      const savedSessions = await getChatSessions();
+      setChatSessions(savedSessions);
+      
+      // Set current chat to the most recent one or create a new one
+      if (savedSessions.length > 0) {
+        // Sort by updated date and get the most recent
+        const sortedSessions = [...savedSessions].sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+        setCurrentChatId(sortedSessions[0].id);
+      } else {
+        const newChatId = await handleNewChat();
+        setCurrentChatId(newChatId);
+      }
+      
+      setIsInitialized(true);
+    };
     
-    // Set current chat to the most recent one or create a new one
-    if (savedSessions.length > 0) {
-      // Sort by updated date and get the most recent
-      const sortedSessions = [...savedSessions].sort(
-        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      );
-      setCurrentChatId(sortedSessions[0].id);
-    } else {
-      handleNewChat();
-    }
+    initializeChats();
   }, []);
   
   // Create a new chat session
-  const handleNewChat = useCallback(() => {
+  const handleNewChat = useCallback(async () => {
     const defaultModel = getDefaultModel();
     const newChatId = uuidv4();
     const newChat: ChatSession = {
@@ -46,7 +55,7 @@ export const useChat = () => {
       updatedAt: new Date().toISOString()
     };
     
-    saveChatSession(newChat);
+    await saveChatSession(newChat);
     setChatSessions(prev => [newChat, ...prev]);
     setCurrentChatId(newChatId);
     
@@ -54,8 +63,8 @@ export const useChat = () => {
   }, []);
   
   // Load a specific chat session
-  const loadChat = useCallback((chatId: string) => {
-    const chat = getChatSessionById(chatId);
+  const loadChat = useCallback(async (chatId: string) => {
+    const chat = await getChatSessionById(chatId);
     if (chat) {
       setCurrentChatId(chatId);
       return true;
@@ -64,13 +73,13 @@ export const useChat = () => {
   }, []);
   
   // Delete a chat session
-  const deleteChat = useCallback((chatId: string) => {
-    deleteChatSession(chatId);
+  const deleteChat = useCallback(async (chatId: string) => {
+    await deleteChatSession(chatId);
     setChatSessions(prev => prev.filter(chat => chat.id !== chatId));
     
     // If we deleted the current chat, select another one or create a new one
     if (chatId === currentChatId) {
-      const remainingSessions = getChatSessions();
+      const remainingSessions = await getChatSessions();
       if (remainingSessions.length > 0) {
         setCurrentChatId(remainingSessions[0].id);
       } else {
@@ -81,7 +90,7 @@ export const useChat = () => {
   
   // Send a message
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || !currentChatId) return;
+    if (!content.trim() || !currentChatId || !isInitialized) return;
     
     // Find current chat
     const currentChat = chatSessions.find(chat => chat.id === currentChatId);
@@ -96,33 +105,33 @@ export const useChat = () => {
     };
     
     // Add user message to the chat
-    const updatedChat = addMessageToSession(currentChatId, userMessage);
-    
-    // Update title for new chats
-    if (updatedChat.messages.length === 1) {
-      const newTitle = content.length > 30 
-        ? content.substring(0, 30) + "..." 
-        : content;
-      
-      const chatWithTitle = {
-        ...updatedChat,
-        title: newTitle
-      };
-      
-      saveChatSession(chatWithTitle);
-      setChatSessions(prev => 
-        prev.map(chat => chat.id === currentChatId ? chatWithTitle : chat)
-      );
-    } else {
-      // Otherwise just update local state with the new message
-      setChatSessions(prev => 
-        prev.map(chat => chat.id === currentChatId ? updatedChat : chat)
-      );
-    }
-    
-    // Send request to AI service
     setIsLoading(true);
     try {
+      const updatedChat = await addMessageToSession(currentChatId, userMessage);
+      
+      // Update title for new chats
+      if (updatedChat.messages.length === 1) {
+        const newTitle = content.length > 30 
+          ? content.substring(0, 30) + "..." 
+          : content;
+        
+        const chatWithTitle = {
+          ...updatedChat,
+          title: newTitle
+        };
+        
+        await saveChatSession(chatWithTitle);
+        setChatSessions(prev => 
+          prev.map(chat => chat.id === currentChatId ? chatWithTitle : chat)
+        );
+      } else {
+        // Otherwise just update local state with the new message
+        setChatSessions(prev => 
+          prev.map(chat => chat.id === currentChatId ? updatedChat : chat)
+        );
+      }
+      
+      // Send request to AI service
       const modelId = currentChat.modelId || getDefaultModel().id;
       const response = await sendChatRequest({
         messages: [...updatedChat.messages],
@@ -132,7 +141,7 @@ export const useChat = () => {
       
       // Add AI response to chat
       const assistantMessage = response.message;
-      const finalChat = addMessageToSession(currentChatId, assistantMessage);
+      const finalChat = await addMessageToSession(currentChatId, assistantMessage);
       
       setChatSessions(prev => 
         prev.map(chat => chat.id === currentChatId ? finalChat : chat)
@@ -143,7 +152,7 @@ export const useChat = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentChatId, chatSessions]);
+  }, [currentChatId, chatSessions, isInitialized]);
   
   // Get current chat
   const currentChat = chatSessions.find(chat => chat.id === currentChatId);
@@ -153,10 +162,12 @@ export const useChat = () => {
     currentChat,
     currentChatId,
     isLoading,
+    isInitialized,
     sendMessage,
     newChat: handleNewChat,
     loadChat,
-    deleteChat
+    deleteChat,
+    userId: getUserId()
   };
 };
 

@@ -18,6 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import SyncIndicator from "./SyncIndicator";
 
 interface SidebarProps {
   chatHistory: { id: string; title: string }[];
@@ -25,6 +26,7 @@ interface SidebarProps {
   onSelectChat: (id: string) => void;
   onDeleteChat?: (id: string) => void;
   selectedChatId?: string;
+  userId?: string;
 }
 
 const Sidebar = ({ 
@@ -32,7 +34,8 @@ const Sidebar = ({
   onNewChat, 
   onSelectChat,
   onDeleteChat,
-  selectedChatId 
+  selectedChatId,
+  userId 
 }: SidebarProps) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -61,9 +64,12 @@ const Sidebar = ({
         isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
         <div className="flex flex-col h-full p-4">
-          <div className="flex items-center justify-center py-4">
-            <MessageSquare className="h-8 w-8 text-primary mr-2" />
-            <h1 className="text-xl font-bold">Echo Chat</h1>
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center">
+              <MessageSquare className="h-8 w-8 text-primary mr-2" />
+              <h1 className="text-xl font-bold">Echo Chat</h1>
+            </div>
+            <SyncIndicator />
           </div>
 
           <Button 
@@ -115,6 +121,11 @@ const Sidebar = ({
           </div>
 
           <div className="border-t pt-4 space-y-2">
+            {userId && (
+              <div className="px-2 py-1 text-xs text-muted-foreground">
+                Device ID: {userId.substring(0, 8)}...
+              </div>
+            )}
             <Button variant="ghost" className="w-full justify-start">
               <Settings className="mr-2 h-5 w-5" /> Settings
             </Button>

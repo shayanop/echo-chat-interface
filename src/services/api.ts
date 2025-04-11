@@ -1,6 +1,6 @@
 
 import { v4 as uuidv4 } from 'uuid';
-import { ChatRequest, ChatResponse, Message } from "@/types/chat";
+import { ChatRequest, ChatResponse, Message, ChatSession } from "@/types/chat";
 import { getModelById } from "@/lib/models";
 
 // Base URL for your Ollama server - will need to be configured
@@ -103,4 +103,104 @@ const simulateResponse = (request: ChatRequest): ChatResponse => {
       totalTokens: 50
     }
   };
+};
+
+// New functions for server-side storage
+
+/**
+ * Fetch all chat sessions from server
+ */
+export const fetchChatSessions = async (userId: string): Promise<ChatSession[]> => {
+  if (!API_BASE_URL) {
+    // If no API URL, fall back to local storage
+    return [];
+  }
+  
+  try {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (API_KEY) {
+      headers['Authorization'] = `Bearer ${API_KEY}`;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/api/sessions?userId=${userId}`, {
+      method: 'GET',
+      headers,
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch chat sessions: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching chat sessions:", error);
+    return [];
+  }
+};
+
+/**
+ * Save chat session to server
+ */
+export const saveChatSessionToServer = async (session: ChatSession, userId: string): Promise<boolean> => {
+  if (!API_BASE_URL) {
+    // If no API URL, can't save to server
+    return false;
+  }
+  
+  try {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (API_KEY) {
+      headers['Authorization'] = `Bearer ${API_KEY}`;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/api/sessions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        session,
+        userId
+      }),
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error("Error saving chat session:", error);
+    return false;
+  }
+};
+
+/**
+ * Delete chat session from server
+ */
+export const deleteChatSessionFromServer = async (sessionId: string, userId: string): Promise<boolean> => {
+  if (!API_BASE_URL) {
+    // If no API URL, can't delete from server
+    return false;
+  }
+  
+  try {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (API_KEY) {
+      headers['Authorization'] = `Bearer ${API_KEY}`;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}?userId=${userId}`, {
+      method: 'DELETE',
+      headers,
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error("Error deleting chat session:", error);
+    return false;
+  }
 };

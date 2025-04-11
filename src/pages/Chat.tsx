@@ -12,10 +12,12 @@ const Chat = () => {
     currentChat, 
     currentChatId, 
     isLoading, 
+    isInitialized,
     sendMessage, 
     newChat, 
     loadChat, 
-    deleteChat 
+    deleteChat,
+    userId
   } = useChat();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -43,9 +45,9 @@ const Chat = () => {
   };
 
   // Handle creating a new chat
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
     try {
-      newChat();
+      await newChat();
     } catch (error) {
       console.error("Failed to create new chat:", error);
       toast({
@@ -56,6 +58,21 @@ const Chat = () => {
     }
   };
 
+  if (!isInitialized) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="flex space-x-2">
+            <div className="w-3 h-3 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+            <div className="w-3 h-3 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+            <div className="w-3 h-3 bg-primary rounded-full animate-bounce" style={{ animationDelay: "600ms" }}></div>
+          </div>
+          <p className="text-sm text-muted-foreground">Loading your conversations...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-background text-foreground">
       <Sidebar
@@ -64,6 +81,7 @@ const Chat = () => {
         onSelectChat={loadChat}
         onDeleteChat={deleteChat}
         selectedChatId={currentChatId}
+        userId={userId}
       />
 
       <main className="flex-1 flex flex-col md:ml-72">
