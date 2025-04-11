@@ -7,26 +7,36 @@ import {
   Menu, 
   X, 
   LogOut, 
-  Settings 
+  Settings,
+  Trash2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface SidebarProps {
   chatHistory: { id: string; title: string }[];
   onNewChat: () => void;
   onSelectChat: (id: string) => void;
+  onDeleteChat?: (id: string) => void;
   selectedChatId?: string;
 }
 
 const Sidebar = ({ 
   chatHistory, 
   onNewChat, 
-  onSelectChat, 
+  onSelectChat,
+  onDeleteChat,
   selectedChatId 
 }: SidebarProps) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [hoveredChatId, setHoveredChatId] = useState<string | null>(null);
 
   const handleLogout = () => {
     // Will implement actual logout later
@@ -65,15 +75,42 @@ const Sidebar = ({
 
           <div className="flex-1 overflow-y-auto py-2 space-y-1">
             {chatHistory.map((chat) => (
-              <Button
+              <div 
                 key={chat.id}
-                variant={selectedChatId === chat.id ? "secondary" : "ghost"}
-                className="w-full justify-start text-sm h-auto py-3 px-3 overflow-hidden"
-                onClick={() => onSelectChat(chat.id)}
+                className="relative flex items-center"
+                onMouseEnter={() => setHoveredChatId(chat.id)}
+                onMouseLeave={() => setHoveredChatId(null)}
               >
-                <MessageSquare className="h-4 w-4 mr-2 shrink-0" />
-                <span className="truncate">{chat.title}</span>
-              </Button>
+                <Button
+                  variant={selectedChatId === chat.id ? "secondary" : "ghost"}
+                  className="w-full justify-start text-sm h-auto py-3 px-3 overflow-hidden"
+                  onClick={() => onSelectChat(chat.id)}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2 shrink-0" />
+                  <span className="truncate">{chat.title}</span>
+                </Button>
+                
+                {onDeleteChat && hoveredChatId === chat.id && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteChat(chat.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete chat</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
             ))}
           </div>
 
