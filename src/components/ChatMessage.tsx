@@ -1,9 +1,10 @@
 
 import { cn } from "@/lib/utils";
+import { MessageRole } from "@/types/chat";
 
 interface ChatMessageProps {
   content: string;
-  role: "user" | "assistant";
+  role: MessageRole;
   timestamp?: string;
 }
 
@@ -16,7 +17,9 @@ const ChatMessage = ({ content, role, timestamp }: ChatMessageProps) => {
       <div
         className={cn(
           "message-bubble",
-          role === "user" ? "user-message" : "assistant-message"
+          role === "user" ? "user-message" : 
+          role === "assistant" ? "assistant-message" : 
+          "system-message"
         )}
       >
         <div className="text-sm md:text-base whitespace-pre-wrap">{content}</div>
