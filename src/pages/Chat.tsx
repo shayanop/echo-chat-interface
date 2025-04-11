@@ -5,6 +5,7 @@ import ChatMessage from "@/components/ChatMessage";
 import MessageInput from "@/components/MessageInput";
 import useChat from "@/hooks/useChat";
 import { useToast } from "@/hooks/use-toast";
+import SyncIndicator from "@/components/SyncIndicator";
 
 const Chat = () => {
   const { 
@@ -17,7 +18,8 @@ const Chat = () => {
     newChat, 
     loadChat, 
     deleteChat,
-    userId
+    userId,
+    lastSynced
   } = useChat();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -82,6 +84,7 @@ const Chat = () => {
         onDeleteChat={deleteChat}
         selectedChatId={currentChatId}
         userId={userId}
+        syncIndicator={<SyncIndicator lastSynced={lastSynced ? new Date(lastSynced) : undefined} />}
       />
 
       <main className="flex-1 flex flex-col md:ml-72">
